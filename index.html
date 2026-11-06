@@ -1,0 +1,782 @@
+
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport"
+      content="width=device-width, initial-scale=1.0">
+<title>운동 세트 카운터</title>
+<link rel="manifest" href="manifest.json">
+<style>
+    * {
+        box-sizing: border-box;
+    }
+
+    body {
+        margin: 0;
+        padding: 20px 15px;
+        background: #f3f4f6;
+        font-family: Arial, sans-serif;
+        text-align: center;
+        color: #111827;
+    }
+
+    .container {
+        max-width: 420px;
+        margin: 0 auto;
+    }
+
+    h1 {
+        font-size: 26px;
+        margin: 15px 0 25px;
+    }
+
+    .card {
+        background: white;
+        padding: 25px 18px;
+        margin-bottom: 18px;
+        border-radius: 20px;
+        box-shadow: 0 3px 12px rgba(0,0,0,0.06);
+    }
+
+    h2 {
+        font-size: 21px;
+        margin: 0 0 15px;
+    }
+
+    #count {
+        font-size: 95px;
+        font-weight: bold;
+        margin: 20px 0;
+    }
+
+    #timer {
+        font-size: 68px;
+        font-weight: bold;
+        margin: 20px 0;
+        font-variant-numeric: tabular-nums;
+    }
+
+    button {
+        border: none;
+        border-radius: 12px;
+        padding: 15px 18px;
+        margin: 5px;
+        font-size: 17px;
+        cursor: pointer;
+        touch-action: manipulation;
+    }
+
+    .add {
+        width: 100%;
+        max-width: 300px;
+        padding: 23px;
+        background: #16a34a;
+        color: white;
+        font-size: 23px;
+        font-weight: bold;
+    }
+
+    .secondary {
+        background: #e5e7eb;
+        color: #111827;
+    }
+
+    .controls {
+        display: flex;
+        flex-wrap: wrap;
+        justify-content: center;
+        gap: 4px;
+    }
+
+    select {
+        padding: 12px;
+        font-size: 18px;
+        border: 1px solid #d1d5db;
+        border-radius: 10px;
+        background: white;
+    }
+
+    #status {
+        font-size: 16px;
+        color: #6b7280;
+        min-height: 20px;
+    }
+
+    .finished {
+        color: #16a34a !important;
+        font-weight: bold;
+    }
+
+    .setting {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 14px 5px;
+        font-size: 18px;
+    }
+
+    .setting input {
+        width: 23px;
+        height: 23px;
+        accent-color: #16a34a;
+    }
+
+    .note {
+        font-size: 13px;
+        color: #6b7280;
+        line-height: 1.6;
+    }
+
+    @media (max-width: 360px) {
+        #timer {
+            font-size: 55px;
+        }
+
+        #count {
+            font-size: 80px;
+        }
+    }
+</style>
+</head>
+
+<body>
+
+<div class="container">
+
+    <h1>운동 세트 카운터</h1>
+
+    <!-- 세트 카운터 -->
+    <div class="card">
+
+        <h2>완료한 세트</h2>
+
+        <div id="count">0</div>
+
+        <button class="add" onclick="addSet()">
+            + 세트 완료
+        </button>
+
+        <div class="controls">
+
+            <button class="secondary"
+                    onclick="removeSet()">
+                - 1세트
+            </button>
+
+            <button class="secondary"
+                    onclick="resetSet()">
+                세트 초기화
+            </button>
+
+        </div>
+    </div>
+
+    <!-- 휴식 타이머 -->
+    <div class="card">
+
+        <h2>휴식 타이머</h2>
+
+        <div id="timer">01:30</div>
+
+        <p id="status">대기 중</p>
+
+        <p>휴식 시간 설정</p>
+
+        <select id="restTime"
+                onchange="changeRestTime()">
+
+            <option value="30">30초</option>
+            <option value="60">1분</option>
+            <option value="90">1분 30초</option>
+            <option value="120">2분</option>
+            <option value="180">3분</option>
+            <option value="240">4분</option>
+            <option value="300">5분</option>
+
+        </select>
+
+        <div class="controls"
+             style="margin-top: 20px;">
+
+            <button class="secondary"
+                    onclick="pauseTimer()">
+                일시정지
+            </button>
+
+            <button class="secondary"
+                    onclick="resumeTimer()">
+                다시 시작
+            </button>
+
+            <button class="secondary"
+                    onclick="resetTimer()">
+                타이머 초기화
+            </button>
+
+        </div>
+    </div>
+
+    <!-- 알림 설정 -->
+    <div class="card">
+
+        <h2>알림 설정</h2>
+
+        <label class="setting">
+            <span>알람음 사용</span>
+            <input type="checkbox"
+                   id="soundEnabled"
+                   onchange="saveSettings()">
+        </label>
+
+        <label class="setting">
+            <span>진동 사용</span>
+            <input type="checkbox"
+                   id="vibrationEnabled"
+                   onchange="saveSettings()">
+        </label>
+
+        <button class="secondary"
+                onclick="testNotification()">
+            알람 / 진동 테스트
+        </button>
+
+        <p class="note">
+            진동은 지원되는 스마트폰과 브라우저에서
+            작동합니다.
+        </p>
+
+    </div>
+
+</div>
+
+<script>
+
+// ====================================
+// 1. 저장된 설정 불러오기
+// ====================================
+
+const allowedRestTimes =
+    [30, 60, 90, 120, 180, 240, 300];
+
+let count = Number(
+    localStorage.getItem("setCount")
+) || 0;
+
+let restTime = Number(
+    localStorage.getItem("restTime")
+) || 90;
+
+if (!allowedRestTimes.includes(restTime)) {
+    restTime = 90;
+}
+
+let remainingTime = restTime;
+
+let timerInterval = null;
+let endTime = null;
+
+let audioContext = null;
+
+let soundEnabled =
+    localStorage.getItem("soundEnabled") !== "false";
+
+let vibrationEnabled =
+    localStorage.getItem("vibrationEnabled") !== "false";
+
+
+// ====================================
+// 2. 알림 설정 저장
+// ====================================
+
+function saveSettings() {
+
+    soundEnabled =
+        document.getElementById(
+            "soundEnabled"
+        ).checked;
+
+    vibrationEnabled =
+        document.getElementById(
+            "vibrationEnabled"
+        ).checked;
+
+    localStorage.setItem(
+        "soundEnabled",
+        soundEnabled
+    );
+
+    localStorage.setItem(
+        "vibrationEnabled",
+        vibrationEnabled
+    );
+}
+
+
+// ====================================
+// 3. 오디오 준비
+// ====================================
+
+function prepareAudio() {
+
+    if (!soundEnabled) {
+        return;
+    }
+
+    try {
+
+        if (!audioContext) {
+
+            const AudioContextClass =
+                window.AudioContext ||
+                window.webkitAudioContext;
+
+            if (!AudioContextClass) {
+                return;
+            }
+
+            audioContext =
+                new AudioContextClass();
+        }
+
+        if (audioContext.state === "suspended") {
+
+            audioContext.resume().catch(
+                () => {}
+            );
+        }
+
+    } catch (error) {
+
+        console.log(
+            "오디오 준비 실패:",
+            error
+        );
+    }
+}
+
+
+// ====================================
+// 4. 알람음 3번 재생
+// ====================================
+
+function playAlarm() {
+
+    if (!soundEnabled) {
+        return;
+    }
+
+    if (!audioContext ||
+        audioContext.state !== "running") {
+        return;
+    }
+
+    try {
+
+        for (let i = 0; i < 3; i++) {
+
+            const oscillator =
+                audioContext.createOscillator();
+
+            const gain =
+                audioContext.createGain();
+
+            const start =
+                audioContext.currentTime +
+                i * 0.35;
+
+            oscillator.type = "sine";
+
+            oscillator.frequency.value = 880;
+
+            gain.gain.setValueAtTime(
+                0.0001,
+                start
+            );
+
+            gain.gain.exponentialRampToValueAtTime(
+                0.15,
+                start + 0.02
+            );
+
+            gain.gain.exponentialRampToValueAtTime(
+                0.0001,
+                start + 0.22
+            );
+
+            oscillator.connect(gain);
+
+            gain.connect(
+                audioContext.destination
+            );
+
+            oscillator.start(start);
+
+            oscillator.stop(
+                start + 0.23
+            );
+        }
+
+    } catch (error) {
+
+        console.log(
+            "알람 재생 실패:",
+            error
+        );
+    }
+}
+
+
+// ====================================
+// 5. 진동 3번
+// ====================================
+
+function playVibration() {
+
+    if (!vibrationEnabled) {
+        return;
+    }
+
+    if ("vibrate" in navigator) {
+
+        try {
+
+            navigator.vibrate([
+                250,
+                150,
+                250,
+                150,
+                250
+            ]);
+
+        } catch (error) {
+
+            console.log(
+                "진동 실행 실패:",
+                error
+            );
+        }
+    }
+}
+
+
+// ====================================
+// 6. 알림 실행
+// ====================================
+
+function notifyFinish() {
+
+    playAlarm();
+
+    playVibration();
+}
+
+
+// ====================================
+// 7. 알림 테스트
+// ====================================
+
+function testNotification() {
+
+    prepareAudio();
+
+    // 오디오 준비는 비동기일 수 있으므로
+    // 준비 완료 후 테스트음을 재생
+    if (audioContext &&
+        audioContext.state === "suspended") {
+
+        audioContext.resume().then(
+            () => playAlarm()
+        ).catch(() => {});
+
+    } else {
+
+        playAlarm();
+    }
+
+    playVibration();
+}
+
+
+// ====================================
+// 8. 세트 카운터
+// ====================================
+
+function updateCount() {
+
+    document.getElementById(
+        "count"
+    ).innerText = count;
+
+    localStorage.setItem(
+        "setCount",
+        count
+    );
+}
+
+
+function addSet() {
+
+    prepareAudio();
+
+    count++;
+
+    updateCount();
+
+    // 세트 완료 시 타이머 자동 시작
+    startTimer();
+}
+
+
+function removeSet() {
+
+    count = Math.max(
+        0,
+        count - 1
+    );
+
+    updateCount();
+}
+
+
+function resetSet() {
+
+    count = 0;
+
+    updateCount();
+}
+
+
+// ====================================
+// 9. 타이머 화면
+// ====================================
+
+function updateTimer() {
+
+    const minutes =
+        Math.floor(remainingTime / 60);
+
+    const seconds =
+        remainingTime % 60;
+
+    document.getElementById(
+        "timer"
+    ).innerText =
+        String(minutes).padStart(2, "0") +
+        ":" +
+        String(seconds).padStart(2, "0");
+}
+
+
+function setStatus(
+    message,
+    finished = false
+) {
+
+    const status =
+        document.getElementById(
+            "status"
+        );
+
+    status.innerText = message;
+
+    status.classList.toggle(
+        "finished",
+        finished
+    );
+}
+
+
+// ====================================
+// 10. 타이머 실행
+// ====================================
+
+function runTimer() {
+
+    clearInterval(timerInterval);
+
+    timerInterval = null;
+
+    if (remainingTime <= 0) {
+
+        updateTimer();
+
+        return;
+    }
+
+    endTime =
+        Date.now() +
+        remainingTime * 1000;
+
+    setStatus("휴식 중...");
+
+    timerInterval = setInterval(
+        function() {
+
+            remainingTime = Math.max(
+                0,
+                Math.ceil(
+                    (endTime - Date.now()) / 1000
+                )
+            );
+
+            updateTimer();
+
+            if (remainingTime === 0) {
+
+                clearInterval(
+                    timerInterval
+                );
+
+                timerInterval = null;
+
+                setStatus(
+                    "휴식 완료!",
+                    true
+                );
+
+                // 알람음과 진동 실행
+                notifyFinish();
+            }
+
+        },
+        200
+    );
+}
+
+
+// ====================================
+// 11. 자동 시작
+// ====================================
+
+function startTimer() {
+
+    remainingTime = restTime;
+
+    updateTimer();
+
+    runTimer();
+}
+
+
+// ====================================
+// 12. 일시정지
+// ====================================
+
+function pauseTimer() {
+
+    if (timerInterval !== null) {
+
+        remainingTime = Math.max(
+            0,
+            Math.ceil(
+                (endTime - Date.now()) / 1000
+            )
+        );
+
+        clearInterval(
+            timerInterval
+        );
+
+        timerInterval = null;
+
+        updateTimer();
+
+        setStatus("일시정지");
+    }
+}
+
+
+// ====================================
+// 13. 다시 시작
+// ====================================
+
+function resumeTimer() {
+
+    prepareAudio();
+
+    if (timerInterval === null &&
+        remainingTime > 0) {
+
+        runTimer();
+    }
+}
+
+
+// ====================================
+// 14. 타이머 초기화
+// ====================================
+
+function resetTimer() {
+
+    clearInterval(timerInterval);
+
+    timerInterval = null;
+
+    remainingTime = restTime;
+
+    updateTimer();
+
+    setStatus("대기 중");
+}
+
+
+// ====================================
+// 15. 휴식 시간 변경
+// ====================================
+
+function changeRestTime() {
+
+    restTime = Number(
+        document.getElementById(
+            "restTime"
+        ).value
+    );
+
+    localStorage.setItem(
+        "restTime",
+        restTime
+    );
+
+    resetTimer();
+}
+
+
+// ====================================
+// 16. 처음 실행
+// ====================================
+
+document.getElementById(
+    "restTime"
+).value = restTime;
+
+document.getElementById(
+    "soundEnabled"
+).checked = soundEnabled;
+
+document.getElementById(
+    "vibrationEnabled"
+).checked = vibrationEnabled;
+
+updateCount();
+
+updateTimer();
+
+</script>
+
+<script>
+    if ("serviceWorker" in navigator) {
+        window.addEventListener("load", function() {
+            navigator.serviceWorker.register("./sw.js")
+                .then(function() {
+                    console.log("오프라인 기능 준비 완료");
+                })
+                .catch(function(error) {
+                    console.log("오프라인 등록 실패:", error);
+                });
+        });
+    }
+</script>
+
+</body>
+</html>
